@@ -394,17 +394,14 @@ func (c *Config) Client() (interface{}, error) {
 		opt.Config.Credentials = creds
 	}
 
-	if logging.IsDebugOrHigher() {
-		opt.Config.LogLevel = aws.LogLevel(aws.LogDebugWithHTTPBody | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors)
-		opt.Config.Logger = awsLogger{}
-	}
-
 	if c.Insecure {
 		transport := opt.Config.HTTPClient.Transport.(*http.Transport)
 		transport.TLSClientConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}
 	}
+
+	opt.Config.HTTPClient.Transport = logging.NewTransport("AWS", opt.Config.HTTPClient.Transport)
 
 	// create base session with no retries. MaxRetries will be set later
 	sess, err := session.NewSessionWithOptions(opt)
@@ -826,16 +823,4 @@ var debugAuthFailure = request.NamedHandler{
 			log.Printf("[INFO] Request object: %s", spew.Sdump(req))
 		}
 	},
-}
-
-type awsLogger struct{}
-
-func (l awsLogger) Log(args ...interface{}) {
-	tokens := make([]string, 0, len(args))
-	for _, arg := range args {
-		if token, ok := arg.(string); ok {
-			tokens = append(tokens, token)
-		}
-	}
-	log.Printf("[DEBUG] [aws-sdk-go] %s", strings.Join(tokens, " "))
 }
