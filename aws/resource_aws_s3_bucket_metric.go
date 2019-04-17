@@ -61,9 +61,11 @@ func resourceAwsS3BucketMetricPut(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	if v, ok := d.GetOk("filter"); ok {
-		filterList := v.([]interface{})
-		filterMap := filterList[0].(map[string]interface{})
-		metricsConfiguration.Filter = expandS3MetricsFilter(filterMap)
+		if l, ok := v.([]interface{}); ok && len(l) > 0 {
+			if m, ok := l[0].(map[string]interface{}); ok {
+				metricsConfiguration.Filter = expandS3MetricsFilter(m)
+			}
+		}
 	}
 
 	input := &s3.PutBucketMetricsConfigurationInput{
@@ -188,13 +190,13 @@ func flattenS3MetricsFilter(metricsFilter *s3.MetricsFilter) map[string]interfac
 	if metricsFilter.And != nil {
 		and := *metricsFilter.And
 		if and.Prefix != nil {
-			m["prefix"] = *and.Prefix
+			m["prefix"] = aws.StringValue(and.Prefix)
 		}
 		if and.Tags != nil {
 			m["tags"] = tagsToMapS3(and.Tags)
 		}
 	} else if metricsFilter.Prefix != nil {
-		m["prefix"] = *metricsFilter.Prefix
+		m["prefix"] = aws.StringValue(metricsFilter.Prefix)
 	} else if metricsFilter.Tag != nil {
 		tags := []*s3.Tag{
 			metricsFilter.Tag,
